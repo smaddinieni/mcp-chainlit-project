@@ -1,15 +1,21 @@
+import os
+import chainlit as cl
 from typing import Literal
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import ToolNode
 from langchain.schema.runnable.config import RunnableConfig
 from langchain_core.messages import HumanMessage
+from typing import Annotated
+from typing_extensions import TypedDict
+from langgraph.graph import END, StateGraph, START
+from langgraph.graph.message import MessagesState
+from langchain_core.messages import BaseMessage, SystemMessage, HumanMessage
 
-import chainlit as cl
 from dotenv import load_dotenv
-import os
-
 load_dotenv() 
+
+
 
 api_key = os.getenv("OPENAI_API_KEY")
 
@@ -35,12 +41,7 @@ model = model.bind_tools(tools)
 final_model = final_model.with_config(tags=["final_node"])
 tool_node = ToolNode(tools=tools)
 
-from typing import Annotated
-from typing_extensions import TypedDict
 
-from langgraph.graph import END, StateGraph, START
-from langgraph.graph.message import MessagesState
-from langchain_core.messages import BaseMessage, SystemMessage, HumanMessage
 
 
 def should_continue(state: MessagesState) -> Literal["tools", "final"]:
@@ -65,7 +66,7 @@ def call_final_model(state: MessagesState):
     last_ai_message = messages[-1]
     response = final_model.invoke(
         [
-            SystemMessage("Rewrite this in the voice of Al Roker"),
+            SystemMessage("You are a helpful AI assistant."),
             HumanMessage(last_ai_message.content),
         ]
     )
@@ -107,3 +108,22 @@ async def on_message(msg: cl.Message):
             await final_answer.stream_token(msg.content)
 
     await final_answer.send()
+
+@cl.set_starters
+async def set_starters():
+    return [
+        cl.Starter(
+            label="Morning routine ideation",
+            message="Can you help me create a personalized morning routine that would help increase my productivity throughout the day? Start by asking me about my current habits and what activities energize me in the morning.",
+            ),
+
+        cl.Starter(
+            label="Explain superconductors",
+            message="Explain superconductors like I'm five years old.",
+            ),
+        cl.Starter(
+            label="Python script for daily email reports",
+            message="Write a script to automate sending daily email reports in Python, and walk me through how I would set it up.",
+            ),
+        ]
+
